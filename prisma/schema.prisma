@@ -1,0 +1,106 @@
+// Em /prisma/schema.prisma
+
+datasource db {
+  provider = "postgresql" // Informa ao Prisma que estamos usando PostgreSQL
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// Modelo principal: O "Perfil" (ex: "ATLAS", "ITATIAIA")
+model ConfigurationProfile {
+  id    String @id @default(cuid())
+  nome  String @unique // "ATLAS" ou "ITATIAIA"
+
+  emitente      EmitenteConfig?
+  produto       ProdutoConfig?
+  impostos      ImpostosConfig?
+  data          DataConfig?
+  alterarFlags  AlterarFlags?
+  cstMappings   CSTMapping[]
+
+  criadoEm      DateTime @default(now())
+  atualizadoEm  DateTime @updatedAt
+}
+
+// ----- Modelos de Configuração (Baseado no seu JSON) -----
+
+model EmitenteConfig {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  CNPJ        String?
+  xNome       String?
+  CEP         String?
+  xLgr        String?
+  nro         String?
+  xCpl        String?
+  xBairro     String?
+  xMun        String?
+  UF          String?
+  fone        String?
+}
+
+model ProdutoConfig {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  xProd       String?
+  cEAN        String?
+  cProd       String?
+}
+
+model ImpostosConfig {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  pFCP        String?
+  pICMS       String?
+  pICMSUFDest String?
+  pICMSInter  String?
+  pPIS        String?
+  pCOFINS     String?
+  pIPI        String?
+}
+
+model DataConfig {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  nova_data   String? // "10/09/2025"
+}
+
+model AlterarFlags {
+  id          String  @id @default(cuid())
+  profileId   String  @unique
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  emitente                Boolean @default(false)
+  produtos                Boolean @default(false)
+  impostos                Boolean @default(false)
+  data                    Boolean @default(false)
+  refNFe                  Boolean @default(false)
+  cst                     Boolean @default(false)
+  zerar_ipi_remessa_retorno Boolean @default(false)
+  zerar_ipi_venda           Boolean @default(false)
+}
+
+model CSTMapping {
+  id          String  @id @default(cuid())
+  profileId   String
+  profile     ConfigurationProfile @relation(fields: [profileId], references: [id], onDelete: Cascade)
+
+  cfop        String // "6105", "5949", etc.
+  ICMS        String?
+  IPI         String?
+  PIS         String?
+  COFINS      String?
+
+  @@unique([profileId, cfop]) 
+}
