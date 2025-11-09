@@ -39,7 +39,6 @@ function runMiddleware(req: NextRequest, fn: MulterMiddleware): Promise<void> {
     // O 'req' do Next.js precisa de ser "adaptado" para o 'req' do Express
     // Use any casts at runtime since we're adapting NextRequest to what multer expects
     const expressReq = req as unknown as Request & ExpressLikeReq;
-    (expressReq as ExpressLikeReq).headers = req.headers;
 
     // Pass a dummy Express-like response (multer doesn't use it) and handle callback
     const dummyRes = {} as unknown as Response;
@@ -54,11 +53,6 @@ function runMiddleware(req: NextRequest, fn: MulterMiddleware): Promise<void> {
     });
   });
 }
-export const config = {
-  api: {
-    bodyParser: false,
-  },
-};
 
 /**
  * @Documentação POST /api/process

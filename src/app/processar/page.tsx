@@ -1,31 +1,24 @@
-// Em: src/app/processar/page.tsx
+"use client";
 
-'use client';
-
-import { useState, useEffect, ChangeEvent } from 'react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
+import React, { useEffect, useState, ChangeEvent } from "react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from '@/components/ui/select';
-import {
-  Alert,
-  AlertDescription,
-  AlertTitle,
-} from '@/components/ui/alert';
+} from "@/components/ui/select";
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from '@/components/ui/card';
-import { Label } from '@/components/ui/label';
-import { toast } from 'sonner';
+} from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
 
 // Tipo simples para a lista de perfis
 interface Profile {
@@ -35,7 +28,7 @@ interface Profile {
 
 export default function ProcessarPage() {
   const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [selectedProfileId, setSelectedProfileId] = useState<string>('');
+  const [selectedProfileId, setSelectedProfileId] = useState<string>("");
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -43,153 +36,91 @@ export default function ProcessarPage() {
   useEffect(() => {
     const fetchProfiles = async () => {
       try {
-        const res = await fetch('/api/profiles');
+        const res = await fetch("/api/profiles");
         const data = await res.json();
-        setProfiles(data);
-      } catch (error) {
-        toast.error('Erro ao carregar perfis de configuração.');
+        setProfiles(data || []);
+      } catch (err) {
+        console.error("Erro ao buscar perfis:", err);
       }
     };
     fetchProfiles();
   }, []);
 
-  // 2. Função para guardar os ficheiros selecionados
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+  function handleFileChange(e: ChangeEvent<HTMLInputElement>) {
     setSelectedFiles(e.target.files);
-  };
+  }
 
-  // 3. Função para enviar o formulário (o "processamento")
-  const handleSubmit = async () => {
-    if (!selectedProfileId) {
-      toast.warning('Por favor, selecione um perfil de configuração.');
-      return;
-    }
-    if (!selectedFiles || selectedFiles.length === 0) {
-      toast.warning('Por favor, selecione pelo menos um ficheiro XML.');
-      return;
-    }
+  async function handleSubmit() {
+    if (!selectedProfileId) return toast("Selecione um perfil");
+    if (!selectedFiles || selectedFiles.length === 0)
+      return toast("Selecione pelo menos um ficheiro");
 
-    setIsLoading(true);
-    toast.info('A processar... Por favor, aguarde.', {
-      description: 'Isto pode demorar alguns segundos.',
-    });
-
-    // 4. Usamos 'FormData' para enviar ficheiros + dados
     const formData = new FormData();
-    formData.append('profileId', selectedProfileId);
-    
-    // Adiciona todos os ficheiros ao FormData
+    formData.append("profileId", selectedProfileId);
     for (let i = 0; i < selectedFiles.length; i++) {
-      formData.append('files', selectedFiles[i]);
+      formData.append("files", selectedFiles[i]);
     }
 
     try {
-      // 5. Enviar para a nossa nova API de processamento
-      const res = await fetch('/api/process', {
-        method: 'POST',
+      setIsLoading(true);
+      const res = await fetch("/api/process", {
+        method: "POST",
         body: formData,
-        // Não defina 'Content-Type', o navegador fá-lo-á por nós (necessário para 'boundary')
       });
-
-      if (!res.ok) {
-        throw new Error('Falha no processamento. Verifique a consola do servidor.');
-      }
-
-      // 6. Receber o ficheiro .zip de volta
+      if (!res.ok) throw new Error("Falha no processamento");
       const blob = await res.blob();
-      
-      // 7. Criar um link de download e "clicá-lo"
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = 'xml_processados.zip'; // Nome do ficheiro
+      a.download = "xml_processados.zip";
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
-
-      toast.success('Processamento concluído!', {
-        description: 'O download do .zip foi iniciado.'
-      });
-
-    } catch (error: unknown) {
-      let message = 'Ocorreu um erro desconhecido.';
-      if (error instanceof Error) {
-        message = error.message;
-      } else if (typeof error === 'string') {
-        message = error;
-      } else {
-        try {
-          message = JSON.stringify(error);
-        } catch {
-          // keep default message
-        }
-      }
-      toast.error('Erro no Processamento', {
-        description: message,
-      });
+      toast.success("Download iniciado");
+    } catch (err) {
+      console.error("Erro ao enviar ficheiros:", err);
+      toast.error("Erro ao processar ficheiros");
     } finally {
       setIsLoading(false);
     }
-  };
+  }
 
   return (
-    <div className="container mx-auto p-8 max-w-2xl space-y-8">
-      
-      <Alert>
-        <AlertTitle>Página Principal de Processamento</AlertTitle>
-        <AlertDescription>
-          Esta é a página final. A lógica do seu script Python `manipuladorXML.py` 
-          será executada no servidor quando clicar em &quot;Processar&quot;.
-        </AlertDescription>
-      </Alert>
-
+    <div>
+      <h1>Processar XMLs</h1>
       <Card>
         <CardHeader>
-          <CardTitle>Processar Lote de XML</CardTitle>
-          <CardDescription>
-            Escolha a configuração e envie os seus ficheiros XML para processamento.
-          </CardDescription>
+          <CardTitle>Processamento em lote</CardTitle>
+          <CardDescription>Escolha um perfil e ficheiros XML</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          
-          {/* Passo 1: Selecionar Perfil */}
-          <div className="space-y-2">
-            <Label>1. Escolha o Perfil de Configuração</Label>
-            <Select
-              onValueChange={setSelectedProfileId}
-              disabled={isLoading}
-            >
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um perfil..." />
-              </SelectTrigger>
-              <SelectContent>
-                {profiles.map((profile) => (
-                  <SelectItem key={profile.id} value={profile.id}>
-                    {profile.nome}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <CardContent>
+          <Label>Perfil</Label>
+          <Select
+            onValueChange={(v) => setSelectedProfileId(v)}
+            value={selectedProfileId}
+          >
+            <SelectTrigger aria-label="Perfil">
+              <SelectValue placeholder="Escolha um perfil" />
+            </SelectTrigger>
+            <SelectContent>
+              {profiles.map((p) => (
+                <SelectItem key={p.id} value={p.id}>
+                  {p.nome}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-          {/* Passo 2: Fazer Upload dos Ficheiros */}
-          <div className="space-y-2">
-            <Label>2. Faça Upload dos Ficheiros XML</Label>
-            <Input
-              type="file"
-              multiple // Permite múltiplos ficheiros
-              accept=".xml, text/xml"
-              onChange={handleFileChange}
-              disabled={isLoading}
-            />
-          </div>
+          <Label style={{ marginTop: 12 }}>Ficheiros</Label>
+          <Input type="file" multiple onChange={handleFileChange} />
 
-        </CardContent>
-        <CardContent className="flex justify-end">
-          <Button onClick={handleSubmit} disabled={isLoading}>
-            {isLoading ? 'A processar...' : 'Processar e Fazer Download (.zip)'}
-          </Button>
+          <div style={{ marginTop: 12 }}>
+            <Button onClick={handleSubmit} disabled={isLoading}>
+              {isLoading
+                ? "A processar..."
+                : "Processar e Fazer Download (.zip)"}
+            </Button>
+          </div>
         </CardContent>
       </Card>
     </div>
